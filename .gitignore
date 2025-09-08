@@ -1,0 +1,74 @@
+# -----------------
+# Python
+# -----------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so                 # Linux/macOS native extensions (ok to keep, even on Windows)
+
+# Byte-compiled / optimized / package files
+*.egg
+*.egg-info/
+.eggs/
+*.manifest
+*.spec
+
+# -----------------
+# Virtual Environments
+# -----------------
+.venv/
+env/
+venv/
+
+# -----------------
+# Logs & runtime
+# -----------------
+*.log
+*.pid
+*.pid.lock
+
+# -----------------
+# Coverage / Testing
+# -----------------
+.coverage
+.coverage.*
+.pytest_cache/
+.tox/
+.nox/
+htmlcov/
+coverage.xml
+
+# -----------------
+# Tool caches (optional but recommended)
+# -----------------
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# -----------------
+# IDE / Editor configs
+# -----------------
+.vscode/
+.idea/
+*.iml
+
+# -----------------
+# OS files
+# -----------------
+.DS_Store
+Thumbs.db
+Icon?
+ehthumbs.db
+Desktop.ini
+
+# -----------------
+# Secrets (very important)
+# -----------------
+.env
+
+# -----------------
+# uv / pip files
+# -----------------
+requirements.txt     # ignored since you're using uv
+# uv.lock            # keep committed for reproducible builds

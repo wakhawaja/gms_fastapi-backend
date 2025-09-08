@@ -1,0 +1,21 @@
+[project]
+name = "fastapi-backend"
+version = "0.1.0"
+description = "FastAPI backend with MongoDB, JWT authentication, and uv"
+requires-python = ">=3.9"
+
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "python-dotenv",
+    "motor",                     # async MongoDB driver
+    "pymongo",                   # MongoDB base driver
+    "bcrypt",
+    "python-jose[cryptography]", # JWT
+    "pydantic[email]",
+]
+
+[tool.uv]
+# optional but nice: tells uv where to put the virtualenv
+# uncomment if you want uv to always use `.venv`
+# venv = ".venv"

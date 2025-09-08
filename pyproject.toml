@@ -8,11 +8,12 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "python-dotenv",
-    "motor",                     # async MongoDB driver
-    "pymongo",                   # MongoDB base driver
+    "motor", # async MongoDB driver
+    "pymongo", # MongoDB base driver
     "bcrypt",
     "python-jose[cryptography]", # JWT
     "pydantic[email]",
+    "pydantic-settings>=2.10.1",
 ]
 
 [tool.uv]

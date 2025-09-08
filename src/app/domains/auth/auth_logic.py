@@ -1,30 +1,26 @@
-# app/routes/auth.py
-from fastapi import APIRouter, HTTPException, status
-from app.schemas.auth import LoginRequest, UserOut
-from app.db.mongo import users_collection
+from fastapi import HTTPException, status
 from app.core.security import verify_password
 from app.core.jwt import create_access_token
+from app.domains.auth.auth_db import get_user_by_username
 
-router = APIRouter()
-
-@router.post("/login", response_model=UserOut)
-async def login(data: LoginRequest):
-    user = await users_collection.find_one({"username": data.username})
+async def login_and_issue_token(username: str, password: str):
+    user = await get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    if not await verify_password(data.password, user["passwordHash"]):
+    # verify_password is synchronous per updated core/security.py
+    if not verify_password(password, user["passwordHash"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     token = create_access_token({
         "id": str(user["_id"]),
         "username": user["username"],
-        "userType": user["userType"]
+        "userType": user["userType"],
     })
 
     return {
         "id": str(user["_id"]),
         "username": user["username"],
         "userType": user["userType"],
-        "token": token
+        "token": token,
     }

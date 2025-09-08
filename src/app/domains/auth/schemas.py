@@ -1,4 +1,3 @@
-# app/schemas/auth.py
 from pydantic import BaseModel, Field
 
 class LoginRequest(BaseModel):

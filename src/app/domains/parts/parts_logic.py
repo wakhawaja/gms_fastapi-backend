@@ -1,49 +1,48 @@
-from bson import ObjectId
 from fastapi import HTTPException
+from pymongo.errors import DuplicateKeyError
 from app.domains.parts import parts_db
 from app.domains.parts.mappers import map_part_out
-from app.db.collections import users_collection
-from pymongo.errors import DuplicateKeyError
+from app.schemas.common import UserInDB
+from app.core.audit import build_create_doc, build_update_ops
+from app.utils.object_id import validate_object_id
 
-
-async def _build_users_map(*user_ids):
-    """Helper to fetch and build user info map."""
-    uids = [uid for uid in user_ids if uid]
-    users_map = {}
-
-    if uids:
-        async for user in users_collection.find({"_id": {"$in": uids}}, {"username": 1, "userType": 1}):
-            users_map[user["_id"]] = user
-
-    return users_map
-
-
-async def create_part(data: dict, user_id: str):
+async def create_part_logic(data: dict, user: UserInDB):
+    audit_doc = build_create_doc(data, user.model_dump())
     try:
-        created = await parts_db.insert_part(data, user_id)
-    except ValueError:
-        raise HTTPException(status_code=409, detail="Duplicate part entry")
-
-    users_map = await _build_users_map(created.get("createdBy"), created.get("updatedBy"))
-    return map_part_out(created, users_map)
-
-async def update_part(id: str, data: dict, user_id: str):
-    _id = ObjectId(id)
-    try:
-        updated = await parts_db.update_part(_id, data, user_id)
+        part = await parts_db.create_part(audit_doc)
     except DuplicateKeyError:
-        raise HTTPException(status_code=409, detail="Duplicate part entry")
-    
-    if not updated:
-        raise HTTPException(status_code=404, detail="Part not found")
-    
-    users_map = await _build_users_map([updated], users_collection)
-    return map_part_out(updated, users_map)
+        raise HTTPException(
+            status_code=409,
+            detail="Part with this name and number already exists"
+        )
+    return map_part_out(part)
 
+async def update_part_logic(part_id: str, update_data: dict, user: UserInDB):
+    _id = validate_object_id(part_id)
+    audit_ops = build_update_ops(update_data, user.model_dump())
+    try:
+        updated = await parts_db.update_part(_id, audit_ops)
+        if not updated:
+            raise HTTPException(status_code=404, detail="Part not found")
+    except DuplicateKeyError:
+        raise HTTPException(
+            status_code=409,
+            detail="Part with this name and number already exists"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return map_part_out(updated)
 
-async def delete_part(id: str):
-    _id = ObjectId(id)
-    deleted = await parts_db.delete_part(_id)
-    if not deleted:
+async def get_part_by_id_logic(part_id: str):
+    _id = validate_object_id(part_id)
+    part = await parts_db.get_part_by_id(_id)
+    if not part:
         raise HTTPException(status_code=404, detail="Part not found")
-    return {"message": "Part deleted successfully"}
+    return map_part_out(part)
+
+async def get_all_parts_logic():
+    parts = await parts_db.get_all_parts()
+    return {
+        "total": len(parts),
+        "data": [map_part_out(p) for p in parts]
+    }

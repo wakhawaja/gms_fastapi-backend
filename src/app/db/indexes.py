@@ -2,7 +2,6 @@
 import logging
 from typing import Optional, Dict, Any, Iterable, Tuple
 from pymongo.errors import PyMongoError
-from app.db.collections import users_collection, parts_collection, services_collection
 
 logger = logging.getLogger("db.indexes")
 
@@ -96,24 +95,10 @@ async def _ensure_index(
         logger.error(f"❌ Failed to create index on {coll.name}: {keys} | Error: {e}")
 
 
-async def ensure_indexes() -> None:
-    """
-    Create/align all indexes. Safe to call at startup.
-    Notes:
-      - Users: case-insensitive unique username.
-      - Parts: conditional unique rules for partName/partNumber.
-      - Services: case-insensitive unique name among enabled services (enabled:true).
-    """
-    # USERS — case-insensitive unique username
-    await _ensure_index(
-        users_collection,
-        [("username", 1)],
-        unique=True,
-        collation={"locale": "en", "strength": 2},  # case-insensitive
-        name="uniq_username_ci",
-    )
+from app.db.collections import users_collection, parts_collection, services_collection, suppliers_collection
 
-    # PARTS — unique (partName, partNumber) when partNumber is a real string
+async def ensure_indexes() -> None:
+    # PARTS — already correct
     await _ensure_index(
         parts_collection,
         [("partName", 1), ("partNumber", 1)],
@@ -122,7 +107,6 @@ async def ensure_indexes() -> None:
         name="uniq_part_name_number_string",
     )
 
-    # PARTS — unique partName when partNumber is null
     await _ensure_index(
         parts_collection,
         [("partName", 1)],
@@ -131,20 +115,25 @@ async def ensure_indexes() -> None:
         name="uniq_part_name_when_number_null",
     )
 
-    # SERVICES — case-insensitive unique name *only for enabled:true*
-    # (allows reusing the same name after soft delete)
+    # SERVICES — globally unique name (no reuse after soft delete)
     await _ensure_index(
         services_collection,
         [("name", 1)],
         unique=True,
-        partialFilterExpression={"enabled": True},
-        collation={"locale": "en", "strength": 2},  # case-insensitive
-        name="uniq_service_name_enabled_true_ci",
+        collation={"locale": "en", "strength": 2},
+        name="uniq_service_name_ci"
     )
 
-    # Helpful secondary index for queries by enabled
     await _ensure_index(
         services_collection,
         [("enabled", 1)],
-        name="services_enabled_idx",
+        name="services_enabled_idx"
+    )
+
+    # SUPPLIERS — unique name (always)
+    await _ensure_index(
+        suppliers_collection,
+        [("name", 1)],
+        unique=True,
+        name="uniq_supplier_name"
     )

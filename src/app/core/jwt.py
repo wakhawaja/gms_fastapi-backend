@@ -1,8 +1,10 @@
-from datetime import timedelta, datetime
+# app/core/jwt.py
+from datetime import timedelta
 from jose import jwt, JWTError
 from typing import Union, Dict, Any
-from app.config.settings import settings
 
+from app.config.settings import settings
+from app.core.time import utcnow  # ✅ Use your custom utcnow()
 
 def create_access_token(
     data: dict,
@@ -10,22 +12,19 @@ def create_access_token(
 ) -> str:
     """
     Create a JWT token with given payload and expiration.
-    `expires_delta` can be int (seconds) or timedelta.
+    `expires_delta` can be an int (seconds) or a timedelta.
     """
-    if isinstance(expires_delta, int):
-        expire = datetime.utcnow() + timedelta(seconds=expires_delta)
-    else:
-        expire = datetime.utcnow() + expires_delta
+    expire = utcnow() + (
+        timedelta(seconds=expires_delta) if isinstance(expires_delta, int) else expires_delta
+    )
 
-    to_encode = data.copy()
-    to_encode.update({"exp": expire})
+    to_encode = {**data, "exp": expire}
 
-    encoded_jwt = jwt.encode(
+    return jwt.encode(
         to_encode,
         settings.JWT_SECRET,
-        algorithm=settings.JWT_ALGORITHM,
+        algorithm=settings.JWT_ALGORITHM
     )
-    return encoded_jwt
 
 
 def decode_access_token(token: str) -> Union[Dict[str, Any], None]:
@@ -33,11 +32,10 @@ def decode_access_token(token: str) -> Union[Dict[str, Any], None]:
     Decode and validate a JWT. Returns payload if valid, or None if invalid.
     """
     try:
-        payload = jwt.decode(
+        return jwt.decode(
             token,
             settings.JWT_SECRET,
-            algorithms=[settings.JWT_ALGORITHM],
+            algorithms=[settings.JWT_ALGORITHM]
         )
-        return payload
     except JWTError:
         return None

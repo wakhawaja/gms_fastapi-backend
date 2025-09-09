@@ -1,47 +1,54 @@
-# domains/service/router.py
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
-from bson import ObjectId
+from fastapi import APIRouter, Depends, Path
+from app.domains.parts.schemas import PartCreate, PartUpdate, PartListResponse, PartOut
 from app.schemas.common import UserInDB
-from app.domains.service.schemas import ServiceCreate, ServiceUpdate, ServiceOut
-from app.domains.service import service_logic, service_db
-from app.domains.service.mappers import map_service_out
 from app.core.auth import get_current_user, require_role
-from app.db.collections import users_collection
+from app.domains.parts import parts_logic
 
-router = APIRouter(prefix="/services", tags=["Services"])
+router = APIRouter(prefix="/parts", tags=["Parts"])
 
-def _oid(id_str: str) -> ObjectId:
-    if not ObjectId.is_valid(id_str):
-        raise HTTPException(status_code=400, detail="Invalid service ID")
-    return ObjectId(id_str)
+@router.post(
+    "/",
+    response_model=PartOut,
+    status_code=201,
+    summary="Create a new part",
+    description="Creates a new part in the inventory. Only accessible by admin users."
+)
+async def create_part(
+    data: PartCreate,
+    user: UserInDB = Depends(require_role("admin"))
+):
+    return await parts_logic.create_part_logic(data.model_dump(), user)
 
-@router.post("/", response_model=ServiceOut, status_code=status.HTTP_201_CREATED)
-async def create(data: ServiceCreate, user: UserInDB = Depends(require_role("admin"))):
-    return await service_logic.create_service(data.dict(), user["id"])
+@router.get(
+    "/",
+    response_model=PartListResponse,
+    summary="List all parts",
+    description="Returns a list of all parts sorted by creation date."
+)
+async def get_all_parts(user: UserInDB = Depends(get_current_user)):
+    return await parts_logic.get_all_parts_logic()
 
-@router.get("/", response_model=List[ServiceOut])
-async def get_all(user: UserInDB = Depends(get_current_user)):
-    services = await service_db.get_all_services()
+@router.get(
+    "/{part_id}",
+    response_model=PartOut,
+    summary="Get part by ID",
+    description="Retrieves a specific part by its ID."
+)
+async def get_part_by_id(
+    part_id: str = Path(..., description="ID of the part to retrieve"),
+    user: UserInDB = Depends(get_current_user)
+):
+    return await parts_logic.get_part_by_id_logic(part_id)
 
-    uids = {s.get("createdBy") for s in services} | \
-           {s.get("updatedBy") for s in services} | \
-           {s.get("deletedBy") for s in services}
-    uids = {uid for uid in uids if uid}
-
-    users_map = {}
-    if uids:
-        async for user_doc in users_collection.find({"_id": {"$in": list(uids)}}, {"username": 1, "userType": 1}):
-            users_map[user_doc["_id"]] = user_doc
-
-    return [await map_service_out(s, users_map) for s in services]
-
-@router.patch("/{id}", response_model=ServiceOut)
-async def update(id: str, data: ServiceUpdate, user: UserInDB = Depends(require_role("admin"))):
-    if not data.name and data.enabled is None:
-        raise HTTPException(status_code=400, detail="No fields to update")
-    return await service_logic.update_service(id, data.dict(exclude_unset=True), user["id"])
-
-@router.delete("/{id}")
-async def delete(id: str, user: UserInDB = Depends(require_role("admin"))):
-    return await service_logic.delete_service(id, user["id"])
+@router.patch(
+    "/{part_id}",
+    response_model=PartOut,
+    summary="Update part",
+    description="Updates a part's name or number. Only accessible by admin users."
+)
+async def update_part(
+    part_id: str = Path(..., description="ID of the part to update"),
+    data: PartUpdate = ...,
+    user: UserInDB = Depends(require_role("admin"))
+):
+    return await parts_logic.update_part_logic(part_id, data.model_dump(exclude_unset=True), user)

@@ -1,4 +1,4 @@
-from app.utils.object_id import str_object_id
+# app/domains/parts/mappers.py
 
 def map_part_out(doc):
     def format_user(user):
@@ -11,11 +11,11 @@ def map_part_out(doc):
         }
 
     return {
-        "id": str_object_id(doc.get("_id")),
+        "id": str(doc["_id"]),
         "partName": doc.get("partName"),
         "partNumber": doc.get("partNumber"),
         "createdBy": format_user(doc.get("createdBy")),
         "updatedBy": format_user(doc.get("updatedBy")),
-        "createdAt": doc.get("createdAt").isoformat() if doc.get("createdAt") else None,
-        "updatedAt": doc.get("updatedAt").isoformat() if doc.get("updatedAt") else None,
+        "createdAt": str(doc.get("createdAt")) if doc.get("createdAt") else None,
+        "updatedAt": str(doc.get("updatedAt")) if doc.get("updatedAt") else None,
     }
